@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { validate } from 'class-validator';
@@ -80,13 +80,11 @@ export class WishesService {
       },
       where: {
         id,
-        owner: {
-          id: userId,
-        },
       },
     });
 
     if (!wish) throw new BadRequestException('Подарка с таким id не найдено');
+    if (wish.owner.id !== userId) throw new ForbiddenException('Вы можете редактировать только свои желания');
 
     if (!wish.offers.length) {
       for (const key in updateWishDto) {
@@ -104,12 +102,10 @@ export class WishesService {
       },
       where: {
         id,
-        owner: {
-          id: userId,
-        },
       },
     });
     if (!wish) throw new BadRequestException('Подарка с таким id не найдено');
+    if (wish.owner.id !== userId) throw new ForbiddenException('Вы можете удалять только свои желания');
     return await this.wishRepository.remove(wish);
   }
 
