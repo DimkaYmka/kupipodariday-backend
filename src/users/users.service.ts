@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
+import { ILike } from 'typeorm';
 
 @Injectable()
 export class UsersService {
@@ -106,7 +107,10 @@ export class UsersService {
 
   async findManyUsers(query: string) {
     return await this.userRepository.find({
-      where: [{ username: query }, { email: query }],
+      where: [
+        { username: ILike(`%${query}%`) },
+        { email: ILike(`%${query}%`) }
+      ],
       select: {
         id: true,
         username: true,
