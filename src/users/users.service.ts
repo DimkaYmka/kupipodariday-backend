@@ -109,7 +109,7 @@ export class UsersService {
     return await this.userRepository.find({
       where: [
         { username: ILike(`%${query}%`) },
-        { email: ILike(`%${query}%`) }
+        { email: ILike(`%${query}%`) },
       ],
       select: {
         id: true,

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { validate } from 'class-validator';
@@ -21,7 +25,21 @@ export class WishesService {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) throw new BadRequestException('Пользователь не найден');
     wish.owner = user;
-    return this.wishRepository.save(wish);
+    const savedWish = await this.wishRepository.save(wish);
+    return this.wishRepository.findOne({
+      where: { id: savedWish.id },
+      relations: { owner: true },
+      select: {
+        owner: {
+          id: true,
+          username: true,
+          about: true,
+          avatar: true,
+          createdAt: true,
+          updatedAt: true,
+        }, // Исключаем password
+      },
+    });
   }
 
   private async validate(createWishDto: CreateWishDto): Promise<Wish> {
@@ -38,74 +56,131 @@ export class WishesService {
 
   getLastWishes(): Promise<Wish[]> {
     return this.wishRepository.find({
-      order: {
-        createdAt: 'DESC',
-      },
+      order: { createdAt: 'DESC' },
       skip: 0,
       take: 40,
+      relations: { owner: true },
+      select: {
+        owner: {
+          id: true,
+          username: true,
+          about: true,
+          avatar: true,
+          createdAt: true,
+          updatedAt: true,
+        }, // Исключаем password
+      },
     });
   }
 
   getTopWishes(): Promise<Wish[]> {
     return this.wishRepository.find({
-      order: {
-        copied: 'DESC',
-      },
+      order: { copied: 'DESC' },
       skip: 0,
       take: 20,
+      relations: { owner: true },
+      select: {
+        owner: {
+          id: true,
+          username: true,
+          about: true,
+          avatar: true,
+          createdAt: true,
+          updatedAt: true,
+        }, // Исключаем password
+      },
     });
   }
 
   async getOneWish(id: number): Promise<Wish> {
     const wish = await this.wishRepository.findOne({
       relations: {
-        offers: {
-          user: true,
-        },
+        offers: { user: true },
         owner: true,
       },
-      where: {
-        id,
+      where: { id },
+      select: {
+        owner: {
+          id: true,
+          username: true,
+          about: true,
+          avatar: true,
+          createdAt: true,
+          updatedAt: true,
+        }, // Исключаем password
+        offers: {
+          user: {
+            id: true,
+            username: true,
+            about: true,
+            avatar: true,
+            createdAt: true,
+            updatedAt: true,
+          }, // Исключаем password в offers.user
+        },
       },
     });
     if (!wish) throw new BadRequestException('Подарка с таким id не найдено');
     return wish;
   }
 
-  async update(id: number, updateWishDto: UpdateWishDto, userId: number): Promise<Wish> {
+  async update(
+    id: number,
+    updateWishDto: UpdateWishDto,
+    userId: number,
+  ): Promise<Wish> {
     const wish = await this.wishRepository.findOne({
-      relations: {
-        offers: true,
-        owner: true,
-      },
-      where: {
-        id,
-      },
+      relations: { offers: true, owner: true },
+      where: { id },
     });
 
     if (!wish) throw new BadRequestException('Подарка с таким id не найдено');
-    if (wish.owner.id !== userId) throw new ForbiddenException('Вы можете редактировать только свои желания');
+    if (wish.owner.id !== userId)
+      throw new ForbiddenException(
+        'Вы можете редактировать только свои желания',
+      );
 
     if (!wish.offers.length) {
       for (const key in updateWishDto) {
         wish[key] = updateWishDto[key];
       }
-      return this.wishRepository.save(wish);
+      const updatedWish = await this.wishRepository.save(wish);
+      return this.wishRepository.findOne({
+        where: { id: updatedWish.id },
+        relations: { owner: true, offers: true },
+        select: {
+          owner: {
+            id: true,
+            username: true,
+            about: true,
+            avatar: true,
+            createdAt: true,
+            updatedAt: true,
+          }, // Исключаем password
+          offers: {
+            user: {
+              id: true,
+              username: true,
+              about: true,
+              avatar: true,
+              createdAt: true,
+              updatedAt: true,
+            }, // Исключаем password в offers.user
+          },
+        },
+      });
     }
     return wish;
   }
 
   async remove(id: number, userId: number): Promise<Wish> {
     const wish = await this.wishRepository.findOne({
-      relations: {
-        owner: true,
-      },
-      where: {
-        id,
-      },
+      relations: { owner: true },
+      where: { id },
     });
     if (!wish) throw new BadRequestException('Подарка с таким id не найдено');
-    if (wish.owner.id !== userId) throw new ForbiddenException('Вы можете удалять только свои желания');
+    if (wish.owner.id !== userId)
+      throw new ForbiddenException('Вы можете удалять только свои желания');
     return await this.wishRepository.remove(wish);
   }
 
@@ -144,6 +219,16 @@ export class WishesService {
     return this.wishRepository.findOne({
       where: { id: newWish.id },
       relations: { owner: true },
+      select: {
+        owner: {
+          id: true,
+          username: true,
+          about: true,
+          avatar: true,
+          createdAt: true,
+          updatedAt: true,
+        }, // Исключаем password
+      },
     });
   }
 }
